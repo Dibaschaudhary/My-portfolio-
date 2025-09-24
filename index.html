@@ -1,0 +1,745 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Dibas Chaudhary — Cyber Forest DNA Reactor</title>
+
+<!-- Three.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+
+<!-- Optional: OrbitControls for debugging (commented out in production) -->
+<!-- <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/controls/OrbitControls.js"></script> -->
+
+<!-- ======================
+     STYLES: extended, commented,
+     neon-glass language, animations, responsive
+     ====================== -->
+<style>
+/* ---------------------------
+   Theme variables
+   --------------------------- */
+:root{
+  --bg-1: #030412;
+  --bg-2: #071026;
+  --glass: rgba(255,255,255,0.03);
+  --glass-strong: rgba(255,255,255,0.05);
+  --muted: #9fb6c8;
+  --accent-cyan: #33e9ff;
+  --accent-mag: #c57aff;
+  --accent-green: #6ef2b5;
+  --neon: rgba(51,233,255,0.08);
+  --card-radius: 18px;
+  --max-w: 1200px;
+  --ui-font: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace;
+  --line-height: 1.6;
+}
+
+/* ---------------------------
+   Reset & base
+   --------------------------- */
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg-1),var(--bg-2) 60%);font-family:var(--ui-font);color:#eaf7ff;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+button{font-family:inherit}
+
+/* ---------------------------
+   Background canvas: fixed & full-screen
+   - sits behind UI (z-index: -1)
+   --------------------------- */
+#bg-canvas{
+  position:fixed;
+  inset:0;
+  width:100vw;height:100vh;
+  z-index:-1;
+  display:block;
+  background: radial-gradient(1000px 400px at 18% 10%, rgba(50,80,160,0.06), transparent 8%), linear-gradient(180deg,var(--bg-1),var(--bg-2) 60%);
+  pointer-events:none;
+}
+
+/* scanning lines CSS overlay (enhance holographic look) */
+#bg-scan {
+  position:fixed; inset:0; z-index:-1; pointer-events:none;
+  background-image:
+    linear-gradient(180deg, rgba(255,255,255,0.01) 0 1px, transparent 1px 28px),
+    linear-gradient(90deg, rgba(51,233,255,0.01), rgba(197,122,255,0.01));
+  mix-blend-mode:screen; opacity:0.14;
+  animation: scan-vertical 9s linear infinite;
+}
+@keyframes scan-vertical { 0%{transform:translateY(-8%)}50%{transform:translateY(8%)}100%{transform:translateY(-8%)} }
+
+/* subtle vignette */
+#bg-vignette{ position:fixed; inset:0; z-index:-1; pointer-events:none;
+  background: radial-gradient(60% 40% at 50% 18%, rgba(255,255,255,0.02), transparent 10%), radial-gradient(60% 60% at 20% 88%, rgba(0,0,0,0.55), transparent 40%);
+  mix-blend-mode:multiply; opacity:0.35;
+}
+
+/* ---------------------------
+   Header
+   --------------------------- */
+.header {
+  position:fixed; left:12px; right:12px; top:12px; z-index:50;
+  display:flex; justify-content:space-between; align-items:center; gap:12px;
+  pointer-events:none;
+}
+.brand{ display:flex; align-items:center; gap:12px; pointer-events:auto; }
+.logo{ width:56px;height:56px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(120deg,var(--accent-cyan),var(--accent-mag)); font-weight:900; color:#021018;
+  box-shadow:0 10px 40px rgba(40,60,120,0.12); border:1px solid rgba(255,255,255,0.06); }
+.brand .meta{ display:flex; flex-direction:column; }
+.brand .meta .name{ font-weight:900; letter-spacing:-0.2px; }
+.brand .meta .role{ font-size:12px; color:var(--muted); }
+
+nav{ pointer-events:auto; display:flex; gap:12px; align-items:center; }
+nav a{ color:var(--muted); padding:8px 12px; border-radius:10px; font-weight:700; text-decoration:none; }
+nav a:hover{ color:var(--accent-cyan); background: rgba(255,255,255,0.02); }
+
+/* ---------------------------
+   Center hero panel
+   - glass hologram panels
+   - responsive
+   --------------------------- */
+.center-wrap{ width:100%; display:flex; justify-content:center; align-items:flex-start; padding-top:8vh; z-index:30; position:relative; pointer-events:none; }
+.hero-panel{
+  width:calc(100% - 48px); max-width:1100px; border-radius:var(--card-radius);
+  padding:28px; display:flex; gap:24px; align-items:flex-start;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.03));
+  border:1px solid rgba(255,255,255,0.04);
+  box-shadow: 0 20px 80px rgba(2,6,23,0.6);
+  backdrop-filter: blur(12px) saturate(120%);
+  transform: translateZ(0);
+  pointer-events:auto;
+}
+@media(max-width:980px){ .hero-panel{ flex-direction:column; padding:18px } }
+
+/* left content */
+.hero-left{ flex:1; min-width:260px; }
+.title{ font-size:36px; margin:0; font-weight:900; background: linear-gradient(90deg,var(--accent-cyan),var(--accent-mag)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.subtitle{ color:var(--muted); margin-top:8px; font-weight:700; }
+.lead{ color:var(--muted); margin-top:12px; line-height:var(--line-height); }
+
+/* right card */
+.hero-right{ width:320px; min-width:220px; }
+.contact-card{ padding:12px; border-radius:12px; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02)); border:1px solid rgba(255,255,255,0.03) }
+.contact-card .meta{ font-size:13px; color:var(--muted); margin-top:8px; }
+
+/* CTA buttons */
+.cta-row{ display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; }
+.btn{ padding:10px 14px; border-radius:10px; border:none; font-weight:800; cursor:pointer; background:rgba(255,255,255,0.02); color:#eaf7ff }
+.btn.primary{ background: linear-gradient(90deg,var(--accent-cyan),var(--accent-mag)); color:#021018; box-shadow:0 10px 34px rgba(44,80,160,0.12) }
+
+/* scroll hint */
+.scroll-hint{ position:fixed; left:50%; transform:translateX(-50%); bottom:18px; color:var(--muted); font-size:13px; z-index:28; pointer-events:none; }
+
+/* ---------------------------
+   Sections (below hero)
+   --------------------------- */
+main{ position:relative; z-index:30; margin-top:28px; padding:24px; max-width:1200px; margin-left:auto; margin-right:auto; pointer-events:auto; }
+.section{ background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02)); border-radius:12px; padding:18px; border:1px solid rgba(255,255,255,0.03); box-shadow:0 12px 40px rgba(2,6,23,0.3); margin-bottom:18px; }
+.grid-2{ display:grid; grid-template-columns: 1fr 320px; gap:16px; align-items:start; }
+@media(max-width:980px){ .grid-2{grid-template-columns:1fr} }
+
+/* skills grid */
+.skills-grid{ display:grid; grid-template-columns: repeat(3,1fr); gap:12px; }
+@media(max-width:860px){ .skills-grid{ grid-template-columns: repeat(2,1fr) } }
+@media(max-width:520px){ .skills-grid{ grid-template-columns: 1fr } }
+
+/* projects */
+.project-grid{ display:grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
+
+/* footer */
+footer{ color:var(--muted); text-align:center; padding:18px; }
+
+/* small screens */
+@media(max-width:640px){
+  .title{ font-size:22px }
+  header{ left:8px; right:8px; }
+}
+
+/* ---------------------------
+   Extra decorative micro-animations & helpers
+   --------------------------- */
+/* faint vertical shimmer on panels */
+.hero-panel::after{
+  content:""; position:absolute; inset:0; border-radius:var(--card-radius); pointer-events:none;
+  background: linear-gradient(90deg, rgba(255,255,255,0.01), rgba(255,255,255,0.015) 30%, transparent 60%);
+  mix-blend-mode:overlay; opacity:0.12;
+}
+
+/* panel hover elevation for desktops */
+@media(hover:hover){
+  .hero-panel:hover{ transform: translateY(-6px) scale(1.001) }
+}
+
+/* small monospace for code */
+.code-inline{ font-family:var(--mono); font-size:13px; color:var(--muted) }
+
+/* accessibility helper */
+.reduced-motion-tip{ position:fixed; left:12px; bottom:12px; z-index:40; font-size:12px; color:var(--muted); background:rgba(0,0,0,0.24); padding:8px 10px; border-radius:8px; pointer-events:none }
+</style>
+</head>
+<body>
+
+<!-- =========================
+     Fixed Background CANVAS + CSS overlays
+     - #bg-canvas is the WebGL canvas
+     - #bg-scan and #bg-vignette give visual polish
+     ========================= -->
+<canvas id="bg-canvas" aria-hidden="true"></canvas>
+<div id="bg-scan" aria-hidden="true"></div>
+<div id="bg-vignette" aria-hidden="true"></div>
+
+<!-- Header -->
+<header class="header">
+  <div class="brand">
+    <div class="logo">DC</div>
+    <div class="meta">
+      <div class="name">Dibas Chaudhary</div>
+      <div class="role">Web & Graphic Designer · AI & Forestry</div>
+    </div>
+  </div>
+  <nav>
+    <a href="#about">About</a>
+    <a href="#skills">Skills</a>
+    <a href="#projects">Projects</a>
+    <a href="#contact">Contact</a>
+  </nav>
+</header>
+
+<!-- Center Hero Panel (floating above the background) -->
+<div class="center-wrap">
+  <section class="hero-panel" role="banner" aria-labelledby="hero-title">
+    <div class="hero-left">
+      <h1 id="hero-title" class="title">Dibas Chaudhary</h1>
+      <div class="subtitle">Creative Web & Graphic Designer · AI & Forestry Enthusiast</div>
+      <p class="lead">
+        I design and build experiences where code meets canopy — data visualizations, interactive prototyping,
+        AI-assisted tools and environmental storytelling. This site is a holographic demo of that approach.
+      </p>
+
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn primary" onclick="document.getElementById('projects').scrollIntoView({behavior:'smooth'})">Explore Work</button>
+        <button class="btn" onclick="location.href='mailto:dibaschaudhary550@gmail.com'">Contact Me</button>
+        <div style="margin-left:auto; align-self:center; color:var(--muted); font-weight:800">Tikapur, Kailali</div>
+      </div>
+    </div>
+
+    <aside class="hero-right">
+      <div class="contact-card">
+        <div style="display:flex;gap:10px;align-items:center">
+          <div style="width:48px;height:48px;border-radius:10px;background:linear-gradient(90deg,var(--accent-mag),var(--accent-green));display:flex;align-items:center;justify-content:center;font-weight:900;color:#031018">DC</div>
+          <div>
+            <div style="font-weight:900">Dibas Chaudhary</div>
+            <div style="font-size:13px;color:var(--muted)">DOB: 10 Sep 2004</div>
+          </div>
+        </div>
+        <div class="meta">
+          <div style="margin-top:10px"><strong>Email</strong><div style="margin-top:6px"><a href="mailto:dibaschaudhary550@gmail.com" style="color:var(--accent-cyan)">dibaschaudhary550@gmail.com</a></div></div>
+          <div style="margin-top:8px"><strong>Phone</strong><div style="margin-top:6px">+977 9822683067</div></div>
+          <div style="margin-top:8px"><strong>Education</strong><div style="margin-top:6px;color:var(--muted)">Diploma in Forestry · Diploma in Computer Application</div></div>
+        </div>
+      </div>
+    </aside>
+  </section>
+</div>
+
+<div class="scroll-hint">Scroll ↓</div>
+
+<!-- Main content sections -->
+<main>
+  <!-- About -->
+  <section id="about" class="section" aria-labelledby="about-h">
+    <div class="grid-2">
+      <div>
+        <h3 id="about-h" style="color:var(--accent-cyan); margin-top:0">About</h3>
+        <p style="color:var(--muted); line-height:var(--line-height)">
+          I bridge field knowledge and front-end craft. I work on web apps, visual identities and small interactive prototypes
+          that communicate ecological data, conservation stories and digital-first campaigns.
+        </p>
+        <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap">
+          <div style="padding:8px 12px;border-radius:10px;background:linear-gradient(90deg,var(--accent-cyan),var(--accent-mag));color:#021018;font-weight:900">Web Designing</div>
+          <div style="padding:8px 12px;border-radius:10px;background:rgba(255,255,255,0.02);color:var(--muted)">Graphic Designing</div>
+          <div style="padding:8px 12px;border-radius:10px;background:rgba(255,255,255,0.02);color:var(--muted)">AI / ML</div>
+        </div>
+      </div>
+
+      <aside style="padding:12px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.015), rgba(0,0,0,0.02));border:1px solid rgba(255,255,255,0.02);">
+        <div style="font-weight:900">Quick Facts</div>
+        <div style="color:var(--muted); margin-top:8px; line-height:1.6">
+          <div><strong>Location:</strong> Tikapur, Kailali, Nepal</div>
+          <div><strong>Languages:</strong> Nepali, English</div>
+          <div><strong>Interests:</strong> AI development, ethical hacking, website/game making, forestry projects, conservation</div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- Skills -->
+  <section id="skills" class="section" aria-labelledby="skills-h">
+    <h3 id="skills-h" style="color:var(--accent-cyan); margin-top:0">Skills</h3>
+    <div class="skills-grid" style="margin-top:12px">
+      <div style="padding:12px;border-radius:10px;background:rgba(255,255,255,0.02)"><div style="font-weight:900">Web Designing <span style="float:right">90%</span></div><div style="height:10px;background:rgba(255,255,255,0.04);border-radius:999px;margin-top:8px"><div style="width:90%;height:100%;background:linear-gradient(90deg,var(--accent-cyan),var(--accent-green));border-radius:999px"></div></div></div>
+      <div style="padding:12px;border-radius:10px;background:rgba(255,255,255,0.02)"><div style="font-weight:900">Graphic Designing <span style="float:right">85%</span></div><div style="height:10px;background:rgba(255,255,255,0.04);border-radius:999px;margin-top:8px"><div style="width:85%;height:100%;background:linear-gradient(90deg,var(--accent-mag),var(--accent-green));border-radius:999px"></div></div></div>
+      <div style="padding:12px;border-radius:10px;background:rgba(255,255,255,0.02)"><div style="font-weight:900">JavaScript / Three.js <span style="float:right">78%</span></div><div style="height:10px;background:rgba(255,255,255,0.04);border-radius:999px;margin-top:8px"><div style="width:78%;height:100%;background:linear-gradient(90deg,var(--accent-cyan),var(--accent-mag));border-radius:999px"></div></div></div>
+      <div style="padding:12px;border-radius:10px;background:rgba(255,255,255,0.02)"><div style="font-weight:900">AI / ML Basics <span style="float:right">65%</span></div><div style="height:10px;background:rgba(255,255,255,0.04);border-radius:999px;margin-top:8px"><div style="width:65%;height:100%;background:linear-gradient(90deg,var(--accent-mag),var(--accent-green));border-radius:999px"></div></div></div>
+      <div style="padding:12px;border-radius:10px;background:rgba(255,255,255,0.02)"><div style="font-weight:900">Environmental Research <span style="float:right">72%</span></div><div style="height:10px;background:rgba(255,255,255,0.04);border-radius:999px;margin-top:8px"><div style="width:72%;height:100%;background:linear-gradient(90deg,var(--accent-green),var(--accent-cyan));border-radius:999px"></div></div></div>
+      <div style="padding:12px;border-radius:10px;background:rgba(255,255,255,0.02)"><div style="font-weight:900">Game Prototypes <span style="float:right">70%</span></div><div style="height:10px;background:rgba(255,255,255,0.04);border-radius:999px;margin-top:8px"><div style="width:70%;height:100%;background:linear-gradient(90deg,var(--accent-cyan),var(--accent-mag));border-radius:999px"></div></div></div>
+    </div>
+  </section>
+
+  <!-- Projects -->
+  <section id="projects" class="section" aria-labelledby="projects-h">
+    <h3 id="projects-h" style="color:var(--accent-cyan); margin-top:0">Selected Projects</h3>
+    <div class="project-grid" style="margin-top:12px">
+      <article style="padding:12px;border-radius:10px;background:rgba(255,255,255,0.015)"><strong>Virtual Forest Data Visualizer</strong><p style="color:var(--muted)">Interactive visual dashboard merging forest metrics and spatial data, built with JavaScript and Three.js prototypes.</p></article>
+      <article style="padding:12px;border-radius:10px;background:rgba(255,255,255,0.015)"><strong>Magical Portfolio (this site)</strong><p style="color:var(--muted)">Holographic DNA reactor + cyber-forest aesthetic built in a single file.</p></article>
+      <article style="padding:12px;border-radius:10px;background:rgba(255,255,255,0.015)"><strong>Forest Learning Game</strong><p style="color:var(--muted)">Small interactive educational prototype for forestry concepts.</p></article>
+      <article style="padding:12px;border-radius:10px;background:rgba(255,255,255,0.015)"><strong>Branding & Posters</strong><p style="color:var(--muted)">Visual campaigns for conservation and community outreach.</p></article>
+    </div>
+  </section>
+
+  <!-- Contact -->
+  <section id="contact" class="section" aria-labelledby="contact-h">
+    <h3 id="contact-h" style="color:var(--accent-cyan); margin-top:0">Contact</h3>
+    <p style="color:var(--muted)">Open to collaborations. Send a message or email me directly.</p>
+    <form onsubmit="handleContact(event)" style="margin-top:12px; display:grid; gap:8px; max-width:640px">
+      <input name="name" placeholder="Your name" required style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:#eaf7ff" />
+      <input name="email" type="email" placeholder="Your email" required style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:#eaf7ff" />
+      <textarea name="message" rows="4" placeholder="Message" required style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:#eaf7ff"></textarea>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn primary" type="submit">Send Message</button>
+        <button class="btn" type="button" onclick="location.href='mailto:dibaschaudhary550@gmail.com'">Email Directly</button>
+      </div>
+    </form>
+  </section>
+</main>
+
+<footer>
+  © <span id="year"></span> Dibas Chaudhary · Tikapur, Kailali · <a href="mailto:dibaschaudhary550@gmail.com" style="color:var(--accent-cyan)">dibaschaudhary550@gmail.com</a>
+</footer>
+
+<!-- Reduced-motion helper -->
+<div class="reduced-motion-tip">Press <strong>R</strong> to toggle motion</div>
+
+<!-- ============================
+     THREE.JS SCRIPT
+     - triple-strand DNA reactor with TubeGeometry
+     - subtle, realistic glow via layered meshes and additive blending
+     - forest pillars, code sprites, dust points, and scan bands
+     ============================ -->
+<script>
+/* ===========================
+   Utilities
+   =========================== */
+const rand = (a,b) => Math.random()*(b-a)+a;
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+
+/* ---------------------------
+   Renderer & canvas setup
+   --------------------------- */
+const canvas = document.getElementById('bg-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputEncoding = THREE.sRGBEncoding;
+
+/* main scene */
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x02030a, 0.0028);
+
+/* camera */
+const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 6000);
+camera.position.set(0, 10, 260);
+
+/* lights */
+const ambient = new THREE.AmbientLight(0xffffff, 0.22);
+scene.add(ambient);
+
+const L1 = new THREE.PointLight(0x33e9ff, 1.0, 1200);
+L1.position.set(-160, 120, 260);
+scene.add(L1);
+
+const L2 = new THREE.PointLight(0xc57aff, 0.9, 1200);
+L2.position.set(160, -80, 220);
+scene.add(L2);
+
+/* create a soft circular sprite used for particles (canvas-generated) */
+function makeSoftTexture(colors = ['rgba(255,255,255,0.95)','rgba(130,200,255,0.9)','rgba(80,150,255,0.5)']) {
+  const s = 128;
+  const c = document.createElement('canvas'); c.width = c.height = s;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(s/2,s/2,1,s/2,s/2,s/1.8);
+  g.addColorStop(0, colors[0]);
+  g.addColorStop(0.2, colors[1]);
+  g.addColorStop(0.6, colors[2]);
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0,0,s,s);
+  const tex = new THREE.CanvasTexture(c);
+  tex.needsUpdate = true;
+  return tex;
+}
+
+const softTex = makeSoftTexture();
+
+/* ---- Forest pillars (procedural) ----
+   - create a grid of vertical cylinders (glowing trunks)
+   - use low-poly cylinders for performance
+*/
+const forest = new THREE.Group();
+const ROWS = 8;
+const COLS = 10;
+for(let r=0;r<ROWS;r++){
+  for(let c=0;c<COLS;c++){
+    const height = rand(40, 120);
+    const radiusTop = rand(0.8, 2.2);
+    const radiusBottom = radiusTop + rand(0.2, 0.8);
+    const geom = new THREE.CylinderGeometry(radiusTop, radiusBottom, height, 12, 1, true);
+    const hue = 0.33 + rand(-0.04, 0.06); // greenish
+    const color = new THREE.Color().setHSL(hue, 0.6, 0.06 + Math.random()*0.06);
+    const mat = new THREE.MeshStandardMaterial({
+      color: color,
+      emissive: color.clone().multiplyScalar(4.0),
+      emissiveIntensity: 0.18 + Math.random()*0.18,
+      roughness: 0.85,
+      metalness: 0.02,
+      transparent: true,
+      opacity: 0.98,
+      side: THREE.DoubleSide
+    });
+    const mesh = new THREE.Mesh(geom, mat);
+    const x = (c - COLS/2) * 48 + (r%2 ? 12 : 0) + rand(-6,6);
+    const z = (r - ROWS/2) * 140 + rand(-20,20);
+    mesh.position.set(x, -10 + height/2, z);
+    mesh.rotation.y = rand(-0.2, 0.2);
+    forest.add(mesh);
+  }
+}
+scene.add(forest);
+
+/* ---- Dust / star points ---- */
+const dustGeo = new THREE.BufferGeometry();
+const dustCount = 1600;
+const positions = new Float32Array(dustCount * 3);
+for(let i=0;i<dustCount;i++){
+  positions[i*3] = (Math.random() - 0.5) * 3800;
+  positions[i*3 + 1] = (Math.random() - 0.5) * 1400;
+  positions[i*3 + 2] = (Math.random() - 0.5) * 3800;
+}
+dustGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+const dustMat = new THREE.PointsMaterial({ size: 2.2, map: softTex, transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending });
+const dustPoints = new THREE.Points(dustGeo, dustMat);
+scene.add(dustPoints);
+
+/* ---- Code rain sprites (matrix-like) ----
+   - lightweight sprite particles with drawn canvas text
+*/
+function makeCodeTexture(text, fg = '#9ff3ff', bg = 'rgba(0,0,0,0)'){
+  const w = 512, h = 128;
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = bg; ctx.fillRect(0,0,w,h);
+  ctx.font = '700 20px ' + 'monospace';
+  ctx.fillStyle = fg;
+  // draw the text repeated to make it look dense
+  ctx.globalAlpha = 0.9;
+  ctx.fillText(text, 8, 36);
+  ctx.fillText(text.split('').reverse().join(''), 8, 72);
+  const tex = new THREE.CanvasTexture(c);
+  tex.minFilter = THREE.LinearFilter;
+  tex.needsUpdate = true;
+  return tex;
+}
+const codeGroup = new THREE.Group();
+const codeSnippets = ['for(i=0;i<n;i++)','if(tree.alive)','await fetch()','function render()','0x1A','AI.prototype','console.log()','let x = sin(t)'];
+for(let i=0;i<32;i++){
+  const txt = codeSnippets[Math.floor(Math.random()*codeSnippets.length)];
+  const tex = makeCodeTexture(txt, (i%2? '#9ff3ff' : '#d3b0ff'));
+  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+  const sp = new THREE.Sprite(mat);
+  const s = 80 + Math.random()*140;
+  sp.scale.set(s, s * 0.28, 1);
+  sp.position.set( (Math.random()-0.5)*2800, (Math.random()-0.1)*800, (Math.random()-0.5)*2600 );
+  codeGroup.add(sp);
+}
+scene.add(codeGroup);
+
+/* ---- DNA reactor: triple strands built from curves + TubeGeometry ----
+   Approach:
+   - Build a central parametric helix curve (function)
+   - For each strand, offset phase & radius slightly
+   - Generate TubeGeometry along the curve for each strand
+   - Add a thin emissive "core" line and subtle outer shell for glow (layered)
+   - Rungs implemented as small thin boxes/cylinders between strands
+*/
+function HelixCurve(radius=18, turns=6, pitch=8, phase=0){
+  THREE.Curve.call(this);
+  this.radius = radius;
+  this.turns = turns;
+  this.pitch = pitch;
+  this.phase = phase;
+}
+HelixCurve.prototype = Object.create(THREE.Curve.prototype);
+HelixCurve.prototype.constructor = HelixCurve;
+HelixCurve.prototype.getPoint = function(t){
+  // t in [0,1]
+  const totalAngle = this.turns * Math.PI * 2;
+  const theta = t * totalAngle + this.phase;
+  const x = Math.cos(theta) * this.radius;
+  const y = (t - 0.5) * this.turns * this.pitch * 2; // center vertically
+  const z = Math.sin(theta) * this.radius;
+  return new THREE.Vector3(x, y, z - 40); // shift back a bit (-40) so DNA sits behind UI
+};
+
+/* utility to create tube + glow layers */
+function createStrand(radius, turns, pitch, phase, colorHue){
+  // base curve
+  const curve = new HelixCurve(radius, turns, pitch, phase);
+
+  // main tube (thin)
+  const tubeGeom = new THREE.TubeGeometry(curve, 960, 0.6, 8, false);
+  const mat = new THREE.MeshStandardMaterial({
+    color: new THREE.Color().setHSL(colorHue, 0.8, 0.6),
+    emissive: new THREE.Color().setHSL(colorHue, 0.9, 0.65),
+    emissiveIntensity: 1.0,
+    roughness: 0.18,
+    metalness: 0.03,
+    transparent: true,
+    opacity: 0.98
+  });
+  const tube = new THREE.Mesh(tubeGeom, mat);
+
+  // outer shell for soft glow (slightly bigger and additive)
+  const shellGeom = new THREE.TubeGeometry(curve, 960, 1.6, 8, false);
+  // for glow use MeshBasicMaterial with additive blending
+  const shellMat = new THREE.MeshBasicMaterial({
+    color: new THREE.Color().setHSL(colorHue, 0.8, 0.65),
+    transparent: true,
+    opacity: 0.18,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+  const shell = new THREE.Mesh(shellGeom, shellMat);
+
+  // bright core line (thin) for crisp holographic edge
+  const coreGeom = new THREE.TubeGeometry(curve, 960, 0.22, 6, false);
+  const coreMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.9,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+  const core = new THREE.Mesh(coreGeom, coreMat);
+
+  const g = new THREE.Group();
+  g.add(shell);
+  g.add(tube);
+  g.add(core);
+
+  return { group: g, curve, tube, shell, core };
+}
+
+/* create 3 strands with slight offsets */
+const dnaGroup = new THREE.Group();
+const strands = [];
+const baseHue = 0.55; // bluish
+const strandCount = 3;
+for(let i=0;i<strandCount;i++){
+  const phase = i * (Math.PI / strandCount) * 0.9; // offset phases
+  const r = 16 + (i-1)*1.8; // slight radius variations
+  const hue = baseHue + (i-1)*0.06;
+  const s = createStrand(r, 7.8, 8.8, phase, hue);
+  strands.push(s);
+  dnaGroup.add(s.group);
+}
+dnaGroup.position.set(0, 0, -40);
+scene.add(dnaGroup);
+
+/* create rungs between pairwise strands at sampled points */
+const rungGroup = new THREE.Group();
+const samplePoints = 320;
+for(let i=0;i<samplePoints;i++){
+  // get point on curve t
+  const t = i / (samplePoints - 1);
+  const pA = strands[0].curve.getPoint(t);
+  const pB = strands[1].curve.getPoint(t);
+  const pC = strands[2].curve.getPoint(t);
+
+  // connect 0<->1, 1<->2 occasionally (so not all rungs are drawn)
+  if(i % 6 === 0){
+    const start = pA;
+    const end = pB;
+    const diff = new THREE.Vector3().subVectors(end, start);
+    const len = diff.length();
+    const cylGeo = new THREE.CylinderGeometry(0.32, 0.32, len, 8);
+    const cylMat = new THREE.MeshStandardMaterial({ emissive: new THREE.Color(0x88f2ff), emissiveIntensity: 0.95, roughness:0.3 });
+    const cyl = new THREE.Mesh(cylGeo, cylMat);
+    cyl.position.copy(start).add(diff.multiplyScalar(0.5));
+    cyl.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), diff.clone().normalize());
+    rungGroup.add(cyl);
+  }
+  if(i % 9 === 0){
+    const start = pB;
+    const end = pC;
+    const diff = new THREE.Vector3().subVectors(end, start);
+    const len = diff.length();
+    const cylGeo = new THREE.CylinderGeometry(0.28, 0.28, len, 8);
+    const cylMat = new THREE.MeshStandardMaterial({ emissive: new THREE.Color(0xd3a3ff), emissiveIntensity: 0.85, roughness:0.3 });
+    const cyl = new THREE.Mesh(cylGeo, cylMat);
+    cyl.position.copy(start).add(diff.multiplyScalar(0.5));
+    cyl.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), diff.clone().normalize());
+    rungGroup.add(cyl);
+  }
+}
+dnaGroup.add(rungGroup);
+
+/* add soft halo and ring planes for subtle volumetric glow */
+const haloGeo = new THREE.TorusGeometry(48, 0.9, 12, 160);
+const haloMat = new THREE.MeshBasicMaterial({ color: 0x33e9ff, transparent: true, opacity: 0.05, blending: THREE.AdditiveBlending });
+const halo = new THREE.Mesh(haloGeo, haloMat);
+halo.rotation.x = 1.45; halo.position.z = -40;
+scene.add(halo);
+
+/* scanning bands - semi-transparent planes that sweep */
+const scanGroup = new THREE.Group();
+const SCAN_BANDS = 4;
+for(let i=0;i<SCAN_BANDS;i++){
+  const planeGeo = new THREE.PlaneGeometry(3000, 180);
+  const planeMat = new THREE.MeshBasicMaterial({ color: i%2 ? 0x33e9ff : 0xc57aff, transparent: true, opacity: 0.016 + Math.random()*0.02, blending: THREE.AdditiveBlending, depthWrite:false });
+  const plane = new THREE.Mesh(planeGeo, planeMat);
+  plane.rotation.x = 0.13 + Math.random()*0.04;
+  plane.position.y = (i - (SCAN_BANDS/2)) * 38;
+  plane.position.z = -30 + (i%2? 4 : -4);
+  scanGroup.add(plane);
+}
+scene.add(scanGroup);
+
+/* ---------------------------
+   Interaction (parallax, pointer)
+   --------------------------- */
+let pointerX = 0, pointerY = 0, targetX = 0, targetY = 0;
+function setPointer(x,y){
+  pointerX = (x / window.innerWidth - 0.5) * 2;
+  pointerY = (y / window.innerHeight - 0.5) * -2;
+}
+window.addEventListener('mousemove', (e) => setPointer(e.clientX, e.clientY));
+window.addEventListener('touchmove', (e) => { if(e.touches && e.touches[0]) setPointer(e.touches[0].clientX, e.touches[0].clientY); }, {passive:true});
+
+/* resize */
+function resize(){
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize, { passive:true });
+resize();
+
+/* ---------------------------
+   Animation loop
+   - animate strands (phase, subtle waves)
+   - sweep scan planes
+   - sway forest emission
+   - parallax camera smoothing
+   --------------------------- */
+let time = 0;
+let reduceMotion = false;
+function animate(){
+  time += 0.012;
+
+  // subtler DNA breathing & rotation overall
+  dnaGroup.rotation.y = Math.sin(time*0.12) * 0.12;
+  dnaGroup.rotation.x = Math.sin(time*0.03) * 0.02;
+
+  // animate strand shells for shimmer
+  strands.forEach((s, idx) => {
+    // wave offset along tube by modifying its matrix via small position jitter
+    const phase = time * (0.2 + idx*0.06);
+    s.shell.material.opacity = 0.08 + Math.abs(Math.sin(phase))*0.06;
+    s.core.material.opacity = 0.9 + Math.sin(phase)*0.06;
+    // slight scale breathing on shell
+    s.shell.scale.setScalar(1 + Math.sin(phase*0.9)*0.003);
+  });
+
+  // scan bands movement
+  scanGroup.children.forEach((p, i) => {
+    p.position.y = Math.sin(time*(0.12 + i*0.04) + i) * 58;
+    p.rotation.z = Math.sin(time*0.04 + i) * 0.08;
+    p.material.opacity = 0.012 + (Math.abs(Math.sin(time*0.12 + i)) * 0.028);
+  });
+
+  // forest flicker
+  forest.children.forEach((tr, idx) => {
+    tr.rotation.y += Math.cos(time*0.02 + idx) * 0.0008;
+    tr.material.emissiveIntensity = 0.14 + Math.abs(Math.sin(time*0.25 + idx*0.07)) * 0.14;
+  });
+
+  // code sprites bob & face camera
+  codeGroup.children.forEach((sp, idx) => {
+    sp.position.x += Math.sin(time*0.34 + idx) * 0.03;
+    sp.position.y += Math.cos(time*0.31 + idx) * 0.03;
+    sp.lookAt(camera.position);
+  });
+
+  // dust rotate slowly
+  dustPoints.rotation.y += 0.0006;
+
+  // camera parallax smoothing
+  targetX += (pointerX * 36 - targetX) * 0.06;
+  targetY += (pointerY * 18 - targetY) * 0.06;
+  camera.position.x += (targetX - camera.position.x) * 0.06;
+  camera.position.y += (targetY - camera.position.y) * 0.06;
+  camera.lookAt(0, 0, 0);
+
+  // render
+  renderer.render(scene, camera);
+
+  if(!reduceMotion) requestAnimationFrame(animate);
+}
+animate();
+
+/* accessibility toggle: press 'r' to reduce motion */
+window.addEventListener('keydown', (e) => {
+  if(e.key === 'r' || e.key === 'R'){
+    reduceMotion = !reduceMotion;
+    if(!reduceMotion) animate();
+    // small visual feedback
+    document.querySelector('.reduced-motion-tip').textContent = reduceMotion ? 'Motion paused (R to resume)' : 'Motion enabled (R to pause)';
+  }
+});
+
+/* adjust camera depth slightly on scroll for parallax depth */
+let lastScroll = 0;
+window.addEventListener('scroll', () => {
+  const s = window.scrollY || window.pageYOffset;
+  const delta = s - lastScroll; lastScroll = s;
+  const desiredZ = clamp(camera.position.z + delta*0.02, 160, 380);
+  camera.position.z += (desiredZ - camera.position.z) * 0.08;
+});
+
+/* ============================
+   Contact form (mailto fallback)
+   ============================ */
+function handleContact(e){
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const n = encodeURIComponent(fd.get('name'));
+  const em = encodeURIComponent(fd.get('email'));
+  const m = encodeURIComponent(fd.get('message'));
+  const body = `Name: ${n}%0D%0AEmail: ${em}%0D%0A%0D%0A${m}`;
+  location.href = `mailto:dibaschaudhary550@gmail.com?subject=Portfolio%20Contact%20from%20${n}&body=${body}`;
+}
+
+/* fill year in footer */
+document.getElementById('year').textContent = new Date().getFullYear();
+
+/* If needed: simple debug helper to dispose scene (not used) */
+function disposeScene(){
+  // call if you want to free GPU memory; not used normally
+  renderer.dispose();
+}
+</script>
+</body>
+</html>
